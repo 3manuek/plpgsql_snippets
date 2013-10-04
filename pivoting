@@ -62,7 +62,7 @@ BEGIN
     EXECUTE query;
     RAISE NOTICE 'Query: %', query;
     
-    INSERT INTO pivoted(cred,grado) SELECT cred,grado from liq group by cred,grado;
+    INSERT INTO pivoted2(cred,grado) SELECT cred,grado from liq group by cred,grado;
     CREATE INDEX on pivoted(cred);    
 
     RAISE NOTICE 'Inserted tuples on pivoted';
