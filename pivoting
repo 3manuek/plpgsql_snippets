@@ -37,3 +37,45 @@ BEGIN
 END;
 $BODY$
 LANGUAGE plpgsql;
+
+
+
+
+select pivot('liq'::regclass,'cred','codigo','asd');
+
+CREATE OR REPLACE FUNCTION pivot2 (tb regclass, pivot text, col text, ref text) RETURNS void AS 
+$BODY$
+DECLARE
+   query text;
+   pivot_type text;
+   rec record;
+   i   record;
+BEGIN
+    -- DROP TABLE IF EXISTS pivoted;
+    select atttypid::regtype into pivot_type from pg_attribute where attname = 'cred' and attrelid::regclass = 'liq'::regclass;
+    query := ' CREATE TABLE pivoted2 (' || pivot  || ' ' || pivot_type ||' , grado int,';
+    FOR i IN SELECT distinct(codigo) as codigo FROM liq order by codigo asc
+    LOOP
+        query := query || quote_ident(trim(i.codigo::text)) || ' text,';
+    END LOOP;
+    query := query || ' nully text)';
+    EXECUTE query;
+    RAISE NOTICE 'Query: %', query;
+    
+    INSERT INTO pivoted(cred,grado) SELECT cred,grado from liq group by cred,grado;
+    CREATE INDEX on pivoted(cred);    
+
+    RAISE NOTICE 'Inserted tuples on pivoted';
+
+    query:= 'SELECT * FROM ' || tb ;
+    FOR rec IN EXECUTE query 
+    LOOP
+       EXECUTE 'UPDATE pivoted2 set ' || quote_ident(trim(rec.codigo)) || '=' || rec.importe || ' WHERE cred=' || quote_literal(rec.cred);
+    END LOOP;
+
+END;
+$BODY$
+LANGUAGE plpgsql;
+
+
+
