@@ -43,6 +43,9 @@ LANGUAGE plpgsql;
 
 select pivot('liq'::regclass,'cred','codigo','asd');
 
+-- Compatible 9.3
+-- trim(int) or btrim no longer exists on 9.3 
+
 CREATE OR REPLACE FUNCTION pivot2 (tb regclass, pivot text, col text, ref text) RETURNS void AS 
 $BODY$
 DECLARE
@@ -52,9 +55,9 @@ DECLARE
    i   record;
 BEGIN
     -- DROP TABLE IF EXISTS pivoted;
-    select atttypid::regtype into pivot_type from pg_attribute where attname = 'cred' and attrelid::regclass = 'liq'::regclass;
-    query := ' CREATE TABLE pivoted2 (' || pivot  || ' ' || pivot_type ||' , grado int,';
-    FOR i IN SELECT distinct(codigo) as codigo FROM liq order by codigo asc
+    select atttypid::regtype into pivot_type from pg_attribute where attname = 'cred' and attrelid::regclass = tb::regclass;
+    query := ' CREATE TABLE pivoted (' || pivot  || ' ' || pivot_type ||' , grado int,';
+    FOR i IN EXECUTE 'SELECT distinct(codigo) as codigo FROM ' || tb || ' order by codigo asc'
     LOOP
         query := query || quote_ident(trim(i.codigo::text)) || ' text,';
     END LOOP;
@@ -62,15 +65,15 @@ BEGIN
     EXECUTE query;
     RAISE NOTICE 'Query: %', query;
     
-    INSERT INTO pivoted2(cred,grado) SELECT cred,grado from liq group by cred,grado;
-    CREATE INDEX on pivoted2(cred);    
+    EXECUTE 'INSERT INTO pivoted(cred,grado) SELECT cred,grado from ' || tb  || ' group by cred,grado ';
+    CREATE INDEX on pivoted(cred);    
 
     RAISE NOTICE 'Inserted tuples on pivoted';
 
     query:= 'SELECT * FROM ' || tb ;
     FOR rec IN EXECUTE query 
     LOOP
-       EXECUTE 'UPDATE pivoted2 set ' || quote_ident(trim(rec.codigo)) || '=' || rec.importe || ' WHERE cred=' || quote_literal(rec.cred);
+       EXECUTE 'UPDATE pivoted set ' || quote_ident(trim(rec.codigo::text)) || '=' || rec.importe || ' WHERE cred=' || quote_literal(rec.cred);
     END LOOP;
 
 END;
