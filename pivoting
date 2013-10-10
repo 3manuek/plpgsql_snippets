@@ -45,6 +45,7 @@ select pivot('liq'::regclass,'cred','codigo','asd');
 
 -- Compatible 9.3
 -- trim(int) or btrim no longer exists on 9.3 
+-- set work_mem high, this function uses a lot of memory.
 
 CREATE OR REPLACE FUNCTION pivot2 (tb regclass, pivot text, col text, ref text) RETURNS void AS 
 $BODY$
