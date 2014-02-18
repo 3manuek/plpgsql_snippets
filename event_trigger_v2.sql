@@ -108,11 +108,11 @@ CREATE TABLE only_tz (o timestamptz);
 --    [ TABLESPACE tablespace_name ]
 --    [ WHERE predicate ]
 
-CREATE INDEX test1 ON bar (b);
+CREATE INDEX test1 ON bar (b) WITH (FILLFACTOR=50);
 CREATE INDEX CONCURRENTLY test2 ON baz  (d ASC) TABLESPACE event_db;
 CREATE INDEX test3 ON bar (b) WHERE b BETWEEN '2013-01-01 00:00:00' and '2014-01-01 00:00:00';
-CREATE INDEX test4 ON baz USING gist(p);
-CREATE INDEX test5 ON bar2 (b) WITH (FILLFACTOR=50);
+--CREATE INDEX test4 ON baz USING gist(p);
+--CREATE INDEX test5 ON bar2 (b) WITH (FILLFACTOR=50);
 
 
 --
@@ -124,15 +124,15 @@ CREATE INDEX test5 ON bar2 (b) WITH (FILLFACTOR=50);
 --    AS query
 --    [ WITH [ CASCADED | LOCAL ] CHECK OPTION ]
 
-CREATE EVENT TRIGGER before_create_view ON ddl_command_start WHEN TAG IN ('create view') EXECUTE PROCEDURE snitch();
-CREATE EVENT TRIGGER after_create_view  ON ddl_command_end   WHEN TAG IN ('create view') EXECUTE PROCEDURE snitch();
-CREATE EVENT TRIGGER drop_view          ON sql_drop          WHEN TAG IN ('drop view')   EXECUTE PROCEDURE snitch();
+CREATE EVENT TRIGGER before_create_view ON ddl_command_start WHEN TAG IN ('create view', 'create materialized view') EXECUTE PROCEDURE snitch();
+CREATE EVENT TRIGGER after_create_view  ON ddl_command_end   WHEN TAG IN ('create view', 'create materialized view') EXECUTE PROCEDURE snitch();
+CREATE EVENT TRIGGER drop_view          ON sql_drop          WHEN TAG IN ('drop view', 'drop materialized view')   EXECUTE PROCEDURE snitch();
 
 
 CREATE VIEW barf (o) AS SELECT * from only_tz;
 CREATE RECURSIVE VIEW barf_recursive (a) AS SELECT a from foo;
 --CREATE VIEW rebarf (d) WITH (security_barrier=on) AS SELECT d from baz WITH CASCADED;
-CREATE VIEW rebarf (a) WITH (security_barrier) AS SELECT a from foo WITH LOCAL CHECK OPTION ;
+CREATE VIEW rebarf (a) WITH (security_barrier) AS SELECT a from foo  ;
 CREATE VIEW rebarf_2 (a) AS SELECT a from foo WITH LOCAL CHECK OPTION;
 CREATE VIEW barf_check AS SELECT * FROM nyan WITH CHECK OPTION;
 
@@ -161,8 +161,14 @@ CREATE MATERIALIZED VIEW foo_mv AS SELECT * FROM bar WITH NO DATA;
 --    [ START [ WITH ] start ] [ CACHE cache ] [ [ NO ] CYCLE ]
 --    [ OWNED BY { table_name.column_name | NONE } ]
 
+CREATE EVENT TRIGGER before_create_seq ON ddl_command_start WHEN TAG IN ('create sequence', 'create temporary sequence','create temp sequence') EXECUTE PROCEDURE snitch();
+CREATE EVENT TRIGGER after_create_seq  ON ddl_command_end   WHEN TAG IN ('create sequence', 'create temporary sequence','create temp sequence') EXECUTE PROCEDURE snitch();
+CREATE EVENT TRIGGER drop_seq          ON sql_drop          WHEN TAG IN ('drop sequence', 'drop temporary sequence', 'drop temp sequence')   EXECUTE PROCEDURE snitch();
+
+
 CREATE SEQUENCE test_1_seq INCREMENT BY 1 MINVALUE 1 MAXVALUE 20 START WITH 1 CACHE 1 CYCLE OWNED BY NONE;
 CREATE TEMPORARY SEQUENCE test_2_seq;
+CREATE TEMP SEQUENCE test_3_seq NO MINVALUE NO MAXVALUE NO CYCLE OWNED BY barf.o;
 
 
 -- 
@@ -175,14 +181,23 @@ CREATE TEMPORARY SEQUENCE test_2_seq;
 -- Drop objects
 --
 
+DROP EVENT TRIGGER before_create_seq;
+DROP EVENT TRIGGER after_create_seq;
+DROP EVENT TRIGGER drop_seq;
+
 DROP EVENT TRIGGER IF EXISTS before_create_table;
 DROP EVENT TRIGGER IF EXISTS after_create_table;
 DROP EVENT TRIGGER IF EXISTS drop_table;
 DROP EVENT TRIGGER before_create_view;
 DROP EVENT TRIGGER after_create_view;
-DROP EVENT TRIGGER dorp_view;
+DROP EVENT TRIGGER drop_view;
 
-
+DROP VIEW barf;
+DROP VIEW barf_recursive;
+DROP VIEW rebarf;
+DROP VIEW rebarf_2;
+DROP VIEW barf_check;
+DROP MATERIALIZED VIEW foo_mv;
 DROP TABLE foo CASCADE;
 DROP TABLE baz CASCADE;
 DROP TABLE bar2 CASCADE;
