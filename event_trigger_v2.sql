@@ -161,15 +161,20 @@ CREATE MATERIALIZED VIEW foo_mv AS SELECT * FROM bar WITH NO DATA;
 --    [ START [ WITH ] start ] [ CACHE cache ] [ [ NO ] CYCLE ]
 --    [ OWNED BY { table_name.column_name | NONE } ]
 
-CREATE EVENT TRIGGER before_create_seq ON ddl_command_start WHEN TAG IN ('create sequence', 'create temporary sequence','create temp sequence') EXECUTE PROCEDURE snitch();
-CREATE EVENT TRIGGER after_create_seq  ON ddl_command_end   WHEN TAG IN ('create sequence', 'create temporary sequence','create temp sequence') EXECUTE PROCEDURE snitch();
-CREATE EVENT TRIGGER drop_seq          ON sql_drop          WHEN TAG IN ('drop sequence', 'drop temporary sequence', 'drop temp sequence')   EXECUTE PROCEDURE snitch();
+-- CREATE TEMPORARY SEQUENCE isn't accepted on the tag list. 
+-- Trigger should be fired on CREATE TEMP SEQUENCE using CREATE SEQUENCE tag
+CREATE EVENT TRIGGER before_create_seq ON ddl_command_start WHEN TAG IN ('create sequence') EXECUTE PROCEDURE snitch();
+CREATE EVENT TRIGGER after_create_seq  ON ddl_command_end   WHEN TAG IN ('create sequence') EXECUTE PROCEDURE snitch();
+CREATE EVENT TRIGGER drop_seq          ON sql_drop          WHEN TAG IN ('drop sequence')   EXECUTE PROCEDURE snitch();
 
 
-CREATE SEQUENCE test_1_seq INCREMENT BY 1 MINVALUE 1 MAXVALUE 20 START WITH 1 CACHE 1 CYCLE OWNED BY NONE;
+
+
+--CREATE SEQUENCE test_1_seq INCREMENT BY 1 MINVALUE 1 MAXVALUE 20 START WITH 1 CACHE 1 CYCLE OWNED BY NONE;
 CREATE TEMPORARY SEQUENCE test_2_seq;
-CREATE TEMP SEQUENCE test_3_seq NO MINVALUE NO MAXVALUE NO CYCLE OWNED BY barf.o;
+--CREATE TEMP SEQUENCE test_3_seq NO MINVALUE NO MAXVALUE NO CYCLE OWNED BY barf.o;
 
+select nextval('test_2_seq');
 
 -- 
 -- Trigger Check
