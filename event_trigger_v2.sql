@@ -213,7 +213,7 @@ CREATE EVENT TRIGGER drop_rule          ON sql_drop          WHEN TAG IN ('drop 
 --    DO [ ALSO | INSTEAD ] { NOTHING | command | ( command ; command ... ) }
 
 CREATE OR REPLACE RULE rule_foo AS ON INSERT TO foo WHERE NEW.a > 10 DO INSTEAD NOTHING;
-
+CREATE OR REPLACE RULE rule_foo2 AS ON DELETE TO bar DO ALSO INSERT INTO foo(a) SELECT nextval('test_2_seq');
 
 
 --
