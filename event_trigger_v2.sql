@@ -111,8 +111,8 @@ CREATE TABLE only_tz (o timestamptz);
 CREATE INDEX test1 ON bar (b) WITH (FILLFACTOR=50);
 CREATE INDEX CONCURRENTLY test2 ON baz  (d ASC) TABLESPACE event_db;
 CREATE INDEX test3 ON bar (b) WHERE b BETWEEN '2013-01-01 00:00:00' and '2014-01-01 00:00:00';
---CREATE INDEX test4 ON baz USING gist(p);
---CREATE INDEX test5 ON bar2 (b) WITH (FILLFACTOR=50);
+CREATE INDEX test4 ON baz USING gist(p);
+CREATE INDEX test5 ON bar2 (b) WITH (FILLFACTOR=50);
 
 
 --
@@ -148,7 +148,7 @@ CREATE VIEW barf_check AS SELECT * FROM nyan WITH CHECK OPTION;
 --    [ WITH [ NO ] DATA ]
 
 CREATE MATERIALIZED VIEW foo_mv AS SELECT * FROM bar WITH NO DATA;
-
+CREATE MATERIALIZED VIEW bar_mv (c) TABLESPACE event_db AS SELECT c FROM bar WITH DATA;
 
 
 -- 
@@ -168,17 +168,51 @@ CREATE EVENT TRIGGER after_create_seq  ON ddl_command_end   WHEN TAG IN ('create
 CREATE EVENT TRIGGER drop_seq          ON sql_drop          WHEN TAG IN ('drop sequence')   EXECUTE PROCEDURE snitch();
 
 
-
-
---CREATE SEQUENCE test_1_seq INCREMENT BY 1 MINVALUE 1 MAXVALUE 20 START WITH 1 CACHE 1 CYCLE OWNED BY NONE;
+CREATE SEQUENCE test_1_seq INCREMENT BY 1 MINVALUE 1 MAXVALUE 20 START WITH 1 CACHE 1 CYCLE OWNED BY NONE;
 CREATE TEMPORARY SEQUENCE test_2_seq;
---CREATE TEMP SEQUENCE test_3_seq NO MINVALUE NO MAXVALUE NO CYCLE OWNED BY barf.o;
+CREATE TEMP SEQUENCE test_3_seq NO MINVALUE NO MAXVALUE NO CYCLE OWNED BY barf.o;
 
 select nextval('test_2_seq');
 
 -- 
 -- Trigger Check
 --
+
+CREATE EVENT TRIGGER before_create_tri ON ddl_command_start WHEN TAG IN ('create trigger') EXECUTE PROCEDURE snitch();
+CREATE EVENT TRIGGER after_create_tri  ON ddl_command_end   WHEN TAG IN ('create trigger') EXECUTE PROCEDURE snitch();
+CREATE EVENT TRIGGER drop_tri          ON sql_drop          WHEN TAG IN ('drop trigger')   EXECUTE PROCEDURE snitch();
+
+--CREATE [ CONSTRAINT ] TRIGGER name { BEFORE | AFTER | INSTEAD OF } { event [ OR ... ] }
+--    ON table_name
+--    [ FROM referenced_table_name ]
+--    { NOT DEFERRABLE | [ DEFERRABLE ] { INITIALLY IMMEDIATE | INITIALLY DEFERRED } }
+--    [ FOR [ EACH ] { ROW | STATEMENT } ]
+--    [ WHEN ( condition ) ]
+--    EXECUTE PROCEDURE function_name ( arguments )
+
+--where event can be one of:
+
+--    INSERT
+--    UPDATE [ OF column_name [, ... ] ]
+--    DELETE
+---    TRUNCATE
+
+--CREATE TRIGGER INSTEAD OF INSERT OR DELETE ON foo ;
+
+
+--
+-- Rule check
+--
+
+CREATE EVENT TRIGGER before_create_rule ON ddl_command_start WHEN TAG IN ('create rule') EXECUTE PROCEDURE snitch();
+CREATE EVENT TRIGGER after_create_rule  ON ddl_command_end   WHEN TAG IN ('create rule') EXECUTE PROCEDURE snitch();
+CREATE EVENT TRIGGER drop_rule          ON sql_drop          WHEN TAG IN ('drop rule')   EXECUTE PROCEDURE snitch();
+
+--CREATE [ OR REPLACE ] RULE name AS ON event
+--    TO table_name [ WHERE condition ]
+--    DO [ ALSO | INSTEAD ] { NOTHING | command | ( command ; command ... ) }
+
+CREATE OR REPLACE RULE rule_foo AS ON INSERT TO foo WHERE NEW.a > 10 DO INSTEAD NOTHING;
 
 
 
