@@ -31,6 +31,32 @@ BEGIN
 END;
 $$;
 
+
+-- Dummy function for test triggers
+
+CREATE OR REPLACE FUNCTION shoot() RETURNS trigger LANGUAGE plpgsql AS
+$$
+DECLARE
+BEGIN
+--        IF (TG_OP = 'DELETE') THEN
+ --           RETURN OLD;
+--        ELSIF (TG_OP = 'UPDATE') THEN
+--            RETURN NEW;
+--        ELSIF (TG_OP = 'INSERT') THEN
+--            RETURN NEW;
+--        END IF;
+        RETURN NULL; -- result is ignored since this is an AFTER trigger
+END;
+$$;
+
+
+CREATE TABLE devnull (); 
+
+CREATE RULE devnulli AS ON INSERT TO devnull DO INSTEAD NOTHING;
+CREATE RULE devnulld AS ON DELETE TO devnull DO INSTEAD NOTHING;
+CREATE RULE devnullu AS ON UPDATE TO devnull INSTEAD NOTHING;
+
+
 -- Create a user for the tests
 -- CREATE USER IF NOT EXISTS event_user;
 
@@ -149,7 +175,7 @@ CREATE VIEW barf_check AS SELECT * FROM nyan WITH CHECK OPTION;
 
 CREATE MATERIALIZED VIEW foo_mv AS SELECT * FROM bar WITH NO DATA;
 CREATE MATERIALIZED VIEW bar_mv (c) TABLESPACE event_db AS SELECT c FROM bar WITH DATA;
-
+CREATE MATERIALIZED VIEW nyan_mv WITH (security_barrier) AS SELECT * FROM nyan;
 
 -- 
 -- Sequence Check
@@ -172,6 +198,7 @@ CREATE SEQUENCE test_1_seq INCREMENT BY 1 MINVALUE 1 MAXVALUE 20 START WITH 1 CA
 CREATE TEMPORARY SEQUENCE test_2_seq;
 CREATE TEMP SEQUENCE test_3_seq NO MINVALUE NO MAXVALUE NO CYCLE OWNED BY barf.o;
 
+-- Should be 1
 select nextval('test_2_seq');
 
 -- 
@@ -197,7 +224,22 @@ CREATE EVENT TRIGGER drop_tri          ON sql_drop          WHEN TAG IN ('drop t
 --    DELETE
 ---    TRUNCATE
 
+CREATE TRIGGER generic_dummy BEFORE INSERT OR UPDATE OR DELETE  ON foo 
+ FOR EACH ROW 
+WHEN (1=1)
+EXECUTE PROCEDURE shoot();
+
+CREATE TRIGGER generic_dummy_instead INSTEAD OF INSERT ON barf_recursive
+FOR EACH ROW
+EXECUTE PROCEDURE shoot();
+
+CREATE TRIGGER generic_aft AFTER DELETE ON foo EXECUTE PROCEDURE shoot();
+
+CREATE TRIGGER generic_st AFTER TRUNCATE ON bar FOR STATEMENT EXECUTE PROCEDURE shoot(); 
+
 --CREATE TRIGGER INSTEAD OF INSERT OR DELETE ON foo ;
+
+
 
 
 --
@@ -212,8 +254,14 @@ CREATE EVENT TRIGGER drop_rule          ON sql_drop          WHEN TAG IN ('drop 
 --    TO table_name [ WHERE condition ]
 --    DO [ ALSO | INSTEAD ] { NOTHING | command | ( command ; command ... ) }
 
-CREATE OR REPLACE RULE rule_foo AS ON INSERT TO foo WHERE NEW.a > 10 DO INSTEAD NOTHING;
-CREATE OR REPLACE RULE rule_foo2 AS ON DELETE TO bar DO ALSO INSERT INTO foo(a) SELECT nextval('test_2_seq');
+CREATE OR REPLACE RULE rule_foo AS ON DELETE TO foo WHERE OLD.a > 10 DO INSTEAD NOTHING;
+CREATE OR REPLACE RULE rule_foo2 AS ON INSERT TO bar DO ALSO INSERT INTO foo(a) (SELECT nextval('test_2_seq'));
+--CREATE OR REPLACE RULE rule_foo2 AS ON INSERT TO bar DO INSTEAD INSERT INTO foo(a) (SELECT nextval('test_2_seq'));
+
+--Test content
+INSERT INTO bar(a,b) VALUES(nextval('test_2_seq'),now());
+SELECT 0  as "Should have at least 1 value!", * from foo;
+
 
 
 --
