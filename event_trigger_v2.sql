@@ -126,6 +126,11 @@ CREATE TABLE only_like (LIKE foo INCLUDING ALL);
 CREATE TABLE only_tz (o timestamptz);
 CREATE TEMP TABLE temp_tb (i int);
 
+
+CREATE SEQUENCE just_test_def USING bdr;
+CREATE TABLE test_table_3 ( id int PRIMARY KEY default nextval('just_test_def'));
+
+
 --\q
 
 -- 
@@ -201,6 +206,7 @@ CREATE EVENT TRIGGER drop_seq          ON sql_drop          WHEN TAG IN ('drop s
 CREATE SEQUENCE test_1_seq INCREMENT BY 1 MINVALUE 1 MAXVALUE 20 START WITH 1 CACHE 1 CYCLE OWNED BY NONE;
 CREATE TEMPORARY SEQUENCE test_2_seq;
 CREATE TEMP SEQUENCE test_3_seq NO MINVALUE NO MAXVALUE NO CYCLE OWNED BY temp_tb.i;
+CREATE SEQUENCE test_4_seq USING bdr;
 
 -- Should be 1
 select nextval('test_2_seq');
