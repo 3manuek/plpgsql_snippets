@@ -137,8 +137,9 @@ CREATE TABLE test_table_3 ( id int PRIMARY KEY default nextval('just_test_def'))
 CREATE EVENT TRIGGER before_alter_table ON ddl_command_start WHEN TAG IN ('alter table') EXECUTE PROCEDURE snitch();
 CREATE EVENT TRIGGER after_alter_table  ON ddl_command_end   WHEN TAG IN ('alter table') EXECUTE PROCEDURE snitch();
 
-
-
+ALTER TABLE IF EXISTS ONLY foo ADD COLUMN g int CHECK (g >1);
+ALTER TABLE bar RENAME COLUMN c TO h;
+ALTER TABLE  only_like RENAME TO only_likes;
 
 
 --\q
