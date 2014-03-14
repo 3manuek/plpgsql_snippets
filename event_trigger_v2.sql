@@ -130,6 +130,16 @@ CREATE TEMP TABLE temp_tb (i int);
 CREATE SEQUENCE just_test_def USING bdr;
 CREATE TABLE test_table_3 ( id int PRIMARY KEY default nextval('just_test_def'));
 
+--
+-- Alter check
+--
+
+CREATE EVENT TRIGGER before_alter_table ON ddl_command_start WHEN TAG IN ('alter table') EXECUTE PROCEDURE snitch();
+CREATE EVENT TRIGGER after_alter_table  ON ddl_command_end   WHEN TAG IN ('alter table') EXECUTE PROCEDURE snitch();
+
+
+
+
 
 --\q
 
