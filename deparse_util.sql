@@ -1,3 +1,12 @@
+--
+-- README 
+--
+-- The "tablespace" create feature and related statements are commented to avoid possible 
+-- permission issues when creating the event_db folder.
+-- Please uncomment and remove the tag of the lines starting with "--<UNCOMMENT>" to proceed
+-- with the tablespace option enabled.
+
+
 
 CREATE TABLE IF NOT EXISTS public.log (
   stamp timestamp,
@@ -26,14 +35,78 @@ BEGIN
 END;
 $$;
 
+
+-- Execute snitch on evey supported command:
 CREATE EVENT TRIGGER snitch ON ddl_command_end
 EXECUTE PROCEDURE snitch();
 
+-- User created for certain commands
 CREATE ROLE regression_event_user;
 
-\! mkdir -p /tmp/event_db
-\! chown postgres: /tmp/event_db
-CREATE TABLESPACE event_db LOCATION '/tmp/event_db';
+-- Dictionaries and configuration of FTS:
+CREATE TEXT SEARCH DICTIONARY english_ispell (
+    TEMPLATE = ispell,
+    DictFile = ispell_sample,
+    AffFile = ispell_sample,
+    StopWords = english
+);
+
+CREATE TEXT SEARCH CONFIGURATION public.pg ( COPY = pg_catalog.english );
+
+CREATE TEXT SEARCH DICTIONARY pg_dict (
+    TEMPLATE = 'synonym', --originally was synonym http://www.postgresql.org/docs/8.3/static/textsearch-configuration.html, but isn't working
+    SYNONYMS = pg_dict
+);
+
+
+-- Function section
+
+CREATE OR REPLACE FUNCTION b1_1(xx int default 1)
+      RETURNS SETOF INT
+      LANGUAGE plpgsql
+      ROWS 10
+    AS 
+$$
+    DECLARE
+       j int;
+    BEGIN
+      FOR j IN select i from generate_series(1,10) i(i)
+      LOOP
+        return next j;
+      END LOOP;
+    RETURN;
+    END;
+$$
+;
+
+
+CREATE OR REPLACE FUNCTION b2_1()
+  RETURNS TABLE(col1 int, col2 text, col3 date) IMMUTABLE LANGUAGE plpgsql AS
+$func$
+BEGIN
+
+RETURN QUERY EXECUTE
+format ('SELECT 123, $$justsomedata$$::text, now()::date');
+END
+$func$;
+
+CREATE OR REPLACE FUNCTION b1_2() RETURNS INT LANGUAGE SQL AS $B1_2$
+SELECT round(random()*100)::int;
+$B1_2$;
+
+-- Inserts using functions:
+CREATE TABLE b1(k int);
+CREATE TABLE b2(col1 int, col2 text, col3 date);
+
+INSERT INTO b1 SELECT b1_1();
+INSERT INTO b1 SELECT b1_2();
+INSERT INTO b2 SELECT * FROM b2_1();
+
+
+
+--<UNCOMMENT> \! mkdir -p /tmp/event_db
+--<UNCOMMENT> \! chown postgres: /tmp/event_db
+--<UNCOMMENT> CREATE TABLESPACE event_db LOCATION '/tmp/event_db';
 
 
 -- CREATE SCHEMA
@@ -41,13 +114,12 @@ CREATE SCHEMA test_1;
 CREATE SCHEMA test_2 AUTHORIZATION regression_event_user;
 CREATE SCHEMA AUTHORIZATION regression_event_user;
 CREATE SCHEMA IF NOT EXISTS test_3;
--- FIXME must include compound cases here
 
 --
 -- CREATE TABLE
 --
 
-CREATE TABLE test_1.foo (a int PRIMARY KEY) TABLESPACE event_db;
+CREATE TABLE test_1.foo (a int PRIMARY KEY) TABLESPACE pg_default;  --<UNCOMMENT> TABLESPACE event_db;
 
 CREATE TABLE test_2.bar (b timestamptz(3), c "char", LIKE test_1.foo) WITH (autovacuum_enabled=off);
 
@@ -63,7 +135,7 @@ CREATE TABLE only_like_1 (LIKE including_base);
 CREATE TABLE only_like_2 (LIKE including_base INCLUDING CONSTRAINTS);
 CREATE TABLE only_like_3 (LIKE including_base INCLUDING STORAGE);
 CREATE TABLE only_like_4 (LIKE including_base INCLUDING INDEXES);
-CREATE TABLE only_like_5 (LIKE including_base INCLUDING COMMENTS);
+CREATE TABLE only_like_5 (LIKE including_base INCLUDING COMMENTS INCLUDING INDEXES INCLUDING STORAGE INCLUDING CONSTRAINTS);
 CREATE TABLE only_like_6 (LIKE including_base INCLUDING ALL);
 
 -- XXX what other INCLUDING clauses do we have?
@@ -84,6 +156,8 @@ CREATE SCHEMA r6 CREATE TABLE t2 () INHERITS (r3.t);
 
 SET search_path TO 'test_1', 'test_2', 'public';
 
+
+-- Creates a table with all the types :
 DO $$
 DECLARE creat text;
 BEGIN
@@ -97,6 +171,7 @@ BEGIN
 	EXECUTE creat;
 END; $$;
 
+-- Most usual types:
 CREATE TABLE weirdtypes (
 	a integer,
 	b int,
@@ -129,51 +204,48 @@ CREATE TABLE weirdtypes (
 	aa float(15),
 	ab float(32),
 	ac float(53),
-	ad float(53)[1]
+	ad float(53)[1],
+        ae tsvector,
+        af int4
 );
 
-CREATE TABLE datatypes (
-	int4_col		int4,
-	tstz_col		timestamp with time zone,
-	tsvector_col	tsvector
-);
 
 
 -- 
 -- CREATE INDEX
 --
 
---CREATE [ UNIQUE ] INDEX [ CONCURRENTLY ] [ name ] ON table_name [ USING method ]
---    ( { column_name | ( expression ) } [ COLLATE collation ] [ opclass ] [ ASC | DESC ] [ NULLS { FIRST | LAST } ] [, ...] )
---    [ WITH ( storage_parameter = value [, ... ] ) ]
---    [ TABLESPACE tablespace_name ]
---    [ WHERE predicate ]
 
-CREATE UNIQUE INDEX test1 ON bar (b) WITH (FILLFACTOR=50);
-CREATE INDEX CONCURRENTLY test2 ON baz  (d ASC) TABLESPACE event_db;
-CREATE INDEX test3 ON datatypes (int4_col) WHERE tstz_col BETWEEN '2013-01-01 00:00:00' and '2014-01-01 00:00:00';
+CREATE UNIQUE INDEX test1 ON weirdtypes (af) WITH (FILLFACTOR=50);
+CREATE INDEX CONCURRENTLY test2 ON baz  (d ASC) TABLESPACE pg_default; --<UNCOMMENT> TABLESPACE event_db;
+CREATE INDEX test3 ON weirdtypes (af) WHERE g BETWEEN '2013-01-01 00:00:00' and '2014-01-01 00:00:00';
 CREATE INDEX test4 ON baz USING gist(p);
 CREATE INDEX test5 ON bar2 (b) WITH (FILLFACTOR=50);
-CREATE INDEX test6 ON datatypes USING gin (tsvector_col);
-CREATE INDEX test7 ON datatypes USING gist (tsvector_col);
+CREATE INDEX test6 ON weirdtypes USING gin (ae);
+CREATE INDEX test7 ON weirdtypes USING gist (ae);
 CREATE INDEX test8 ON weirdtypes (s COLLATE "C" ASC NULLS FIRST);
 
-SELECT 'END OF INDEXES';
 
 --
 -- CREATE VIEW
 --
-
+COMMIT;
+SELECT '1';
 CREATE VIEW barf (a) AS SELECT * from foo;
+select 2;
 CREATE RECURSIVE VIEW barf_recursive (a) AS SELECT a from foo;
+select 3;
 CREATE VIEW rebarf_baz (d)  AS (SELECT d from baz) WITH CASCADED CHECK  OPTION;
+select 4;
 CREATE VIEW rebarf_sb (d) WITH (security_barrier=0) AS SELECT d from baz;
+select 5;
 CREATE VIEW rebarf (a) WITH (security_barrier) AS SELECT a from foo  ;
+select 6;
 CREATE VIEW rebarf_2 (a) AS SELECT a from foo WITH LOCAL CHECK OPTION;
+select 7;
 CREATE VIEW barf_check AS SELECT * FROM nyan WITH CHECK OPTION;
 
 
-SELECT 'END OF VIEWS';
 
 --
 -- CREATE MATERIALIZED VIEW 
@@ -184,7 +256,6 @@ CREATE MATERIALIZED VIEW foo_mv AS SELECT * FROM bar WITH NO DATA;
 CREATE MATERIALIZED VIEW bar_mv (c) TABLESPACE event_db AS SELECT c FROM bar WITH DATA;
 CREATE MATERIALIZED VIEW nyan_mv WITH (fillfactor=50) AS SELECT * FROM nyan;
 
-SELECT 'END OF MAT VIEWS';
 
 -- 
 -- CREATE SEQUENCE
@@ -200,20 +271,6 @@ CREATE TEMP SEQUENCE test_3_seq NO MINVALUE NO MAXVALUE NO CYCLE OWNED BY temp_t
 -- CREATE TRIGGER
 --
 
---CREATE [ CONSTRAINT ] TRIGGER name { BEFORE | AFTER | INSTEAD OF } { event [ OR ... ] }
---    ON table_name
---    [ FROM referenced_table_name ]
---    { NOT DEFERRABLE | [ DEFERRABLE ] { INITIALLY IMMEDIATE | INITIALLY DEFERRED } }
---    [ FOR [ EACH ] { ROW | STATEMENT } ]
---    [ WHEN ( condition ) ]
---    EXECUTE PROCEDURE function_name ( arguments )
-
---where event can be one of:
-
---    INSERT
---    UPDATE [ OF column_name [, ... ] ]
---    DELETE
----    TRUNCATE
 
 CREATE FUNCTION shoot() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RETURN NULL; END; $$;
 
@@ -267,9 +324,6 @@ INSERT INTO elements VALUES (9, 'elem1'::elem_types); -- Should FAIL by exceptio
 -- CREATE RULE
 --
 
---CREATE [ OR REPLACE ] RULE name AS ON event
---    TO table_name [ WHERE condition ]
---    DO [ ALSO | INSTEAD ] { NOTHING | command | ( command ; command ... ) }
 
 CREATE OR REPLACE RULE rule_foo AS ON DELETE TO foo WHERE OLD.a > 10 DO INSTEAD NOTHING;
 CREATE OR REPLACE RULE rule_foo2 AS ON INSERT TO bar DO ALSO INSERT INTO foo(a) (SELECT nextval('test_2_seq'));
@@ -300,6 +354,11 @@ ALTER TABLE tt DROP CONSTRAINT tt_b_check;
 ALTER TABLE tt ADD CONSTRAINT check_b_column CHECK (b IS DISTINCT FROM NULL);
 ALTER TABLE tt ADD CONSTRAINT check_b_column_2 CHECK (b IS NOT DISTINCT FROM NULL);
 
+ALTER TABLE tt SET tablespace pg_default;
+
+ALTER TABLE tt alter a set not null;
+create unique index tt_i on tt(a);
+alter table tt replica identity using index tt_i;
 
 -- 
 -- DROPs 
@@ -309,12 +368,12 @@ ALTER TABLE tt ADD CONSTRAINT check_b_column_2 CHECK (b IS NOT DISTINCT FROM NUL
 -- DROP EVENT TRIGGER after_create_seq;
 -- DROP EVENT TRIGGER drop_seq;
 
-DROP EVENT TRIGGER IF EXISTS before_create_table;
-DROP EVENT TRIGGER IF EXISTS after_create_table;
-DROP EVENT TRIGGER IF EXISTS drop_table;
-DROP EVENT TRIGGER before_create_view;
-DROP EVENT TRIGGER after_create_view;
-DROP EVENT TRIGGER drop_view;
+-- DROP EVENT TRIGGER IF EXISTS before_create_table;
+-- DROP EVENT TRIGGER IF EXISTS after_create_table;
+-- DROP EVENT TRIGGER IF EXISTS drop_table;
+-- DROP EVENT TRIGGER before_create_view;
+-- DROP EVENT TRIGGER after_create_view;
+-- DROP EVENT TRIGGER drop_view;
 
 DROP VIEW barf;
 DROP VIEW barf_recursive;
@@ -326,11 +385,34 @@ DROP TABLE foo CASCADE;
 DROP TABLE baz CASCADE;
 DROP TABLE bar CASCADE;
 DROP TABLE nyan CASCADE;
-DROP TABLE datatypes;
 
-DROP TABLESPACE event_db;
+--<UNCOMMENT> DROP TABLESPACE event_db;
 
 
 
 -- clean up
 DROP EVENT TRIGGER snitch;
+
+
+--
+-- Special objects to test DROP statements
+--
+
+CREATE SCHEMA droptest
+CREATE TABLE stuff (a serial PRIMARY KEY, the_object oid)
+CREATE TABLE ref_stuff (b serial PRIMARY KEY, a_fk int NOT NULL REFERENCES stuff);
+
+set search_path = droptest;
+CREATE TYPE the_types AS ENUM('harder','better','faster','stronger');
+
+CREATE FUNCTION return_the_types () RETURNS the_types LANGUAGE plpgsql AS
+$$ DECLARE res the_types ; BEGIN SELECT (('{harder,better,faster,stronger}'::text[])[round(random()*3+1)])::the_types into res; RETURN res; END $$
+;
+
+INSERT INTO stuff(the_object) VALUES (lo_create(0));
+
+
+DROP TABLE ref_stuff CASCADE;
+DROP TYPE the_types CASCADE;
+DROP SCHEMA droptest CASCADE;
+
