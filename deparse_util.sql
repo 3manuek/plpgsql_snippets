@@ -107,6 +107,14 @@ INSERT INTO b2 SELECT * FROM b2_1();
 --<UNCOMMENT> \! mkdir -p /tmp/event_db
 --<UNCOMMENT> \! chown postgres: /tmp/event_db
 --<UNCOMMENT> CREATE TABLESPACE event_db LOCATION '/tmp/event_db';
+\! mkdir -p /tmp/test1
+\! mkdir -p /tmp/test2
+
+CREATE TABLESPACE test location '/tmp/test';
+CREATE TABLESPACE test2 location '/tmp/test_2';
+ALTER TABLESPACE test RENAME TO test1;
+ALTER TABLESPACE test1 MOVE TABLES  TO test2;
+ALTER TABLESPACE test1 MOVE ALL  TO test2;
 
 
 -- CREATE SCHEMA
