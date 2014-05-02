@@ -110,12 +110,13 @@ INSERT INTO b2 SELECT * FROM b2_1();
 \! mkdir -p /tmp/test1
 \! mkdir -p /tmp/test2
 
-CREATE TABLESPACE test location '/tmp/test';
-CREATE TABLESPACE test2 location '/tmp/test_2';
-ALTER TABLESPACE test RENAME TO test1;
-ALTER TABLESPACE test1 MOVE TABLES  TO test2;
-ALTER TABLESPACE test1 MOVE ALL  TO test2;
-
+CREATE TABLESPACE test1 location '/tmp/test1';
+CREATE TABLESPACE test2 location '/tmp/test2';
+ALTER TABLESPACE test1 RENAME TO test1b;
+ALTER TABLESPACE test1b MOVE TABLES  TO test2;
+ALTER TABLESPACE test1b MOVE ALL  TO test2;
+DROP TABLESPACE test1b;
+DROP TABLESPACE test2;
 
 -- CREATE SCHEMA
 CREATE SCHEMA test_1;
