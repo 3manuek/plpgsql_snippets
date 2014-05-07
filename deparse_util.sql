@@ -112,6 +112,27 @@ CREATE COLLATION le_english (LC_COLLATE = "en_US", LC_CTYPE = "en_US");
 
 
 --
+-- CREATE AGGREGATE
+--
+
+CREATE AGGREGATE _avg_ (float8)
+(
+    sfunc = float8_accum,
+    stype = float8[],
+    finalfunc = float8_avg,
+    initcond = '{0,0,0}'
+);
+
+CREATE AGGREGATE array_accum (anyelement)
+(
+    sfunc = array_append,
+    stype = anyarray,
+    initcond = '{}'
+);
+
+
+
+--
 -- CREATE TYPE SECTION
 --
 
@@ -232,7 +253,15 @@ CREATE TABLE weirdtypes (
 	ac float(53),
 	ad float(53)[1],
         ae tsvector,
-        af int4
+        af int4,
+        ag money,
+        ah json[],
+        ai json,
+        aj jsonb,
+        ak uuid,
+        al point,
+        am point[],
+        an polygon
 );
 
 
