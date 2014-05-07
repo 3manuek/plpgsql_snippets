@@ -51,7 +51,7 @@ CREATE TEXT SEARCH DICTIONARY english_ispell (
     StopWords = english
 );
 
-CREATE TEXT SEARCH CONFIGURATION public.pg ( COPY = pg_catalog.english );
+CREATE TEXT SEARCH CONFIGURATION public.pg_conf_ts ( COPY = pg_catalog.english );
 
 CREATE TEXT SEARCH DICTIONARY pg_dict (
     TEMPLATE = 'synonym', --originally was synonym http://www.postgresql.org/docs/8.3/static/textsearch-configuration.html, but isn't working
@@ -101,6 +101,23 @@ CREATE TABLE b2(col1 int, col2 text, col3 date);
 INSERT INTO b1 SELECT b1_1();
 INSERT INTO b1 SELECT b1_2();
 INSERT INTO b2 SELECT * FROM b2_1();
+
+
+--
+-- CREATE COLLATE
+--
+
+CREATE COLLATION deparse_coll FROM "en_US";
+CREATE COLLATION le_english (LC_COLLATE = "en_US", LC_CTYPE = "en_US");
+
+
+--
+-- CREATE TYPE SECTION
+--
+
+CREATE TYPE small_int_list AS ENUM ('8','9','1');
+
+CREATE TYPE range_test AS RANGE (SUBTYPE=int);
 
 
 
