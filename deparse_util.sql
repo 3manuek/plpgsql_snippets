@@ -145,16 +145,16 @@ CREATE TYPE range_test AS RANGE (SUBTYPE=int);
 --<UNCOMMENT> \! mkdir -p /tmp/event_db
 --<UNCOMMENT> \! chown postgres: /tmp/event_db
 --<UNCOMMENT> CREATE TABLESPACE event_db LOCATION '/tmp/event_db';
-\! mkdir -p /tmp/test1
-\! mkdir -p /tmp/test2
+--\! mkdir -p /tmp/test1
+--\! mkdir -p /tmp/test2
 
-CREATE TABLESPACE test1 location '/tmp/test1';
-CREATE TABLESPACE test2 location '/tmp/test2';
-ALTER TABLESPACE test1 RENAME TO test1b;
-ALTER TABLESPACE test1b MOVE TABLES  TO test2;
-ALTER TABLESPACE test1b MOVE ALL  TO test2;
-DROP TABLESPACE test1b;
-DROP TABLESPACE test2;
+--CREATE TABLESPACE test1 location '/tmp/test1';
+--CREATE TABLESPACE test2 location '/tmp/test2';
+--ALTER TABLESPACE test1 RENAME TO test1b;
+--ALTER TABLESPACE test1b MOVE TABLES  TO test2;
+--ALTER TABLESPACE test1b MOVE ALL  TO test2;
+--DROP TABLESPACE test1b;
+--DROP TABLESPACE test2;
 
 -- CREATE SCHEMA
 CREATE SCHEMA test_1;
@@ -166,7 +166,7 @@ CREATE SCHEMA IF NOT EXISTS test_3;
 -- CREATE TABLE
 --
 
-CREATE TABLE test_1.foo (a int PRIMARY KEY) TABLESPACE pg_default;  --<UNCOMMENT> TABLESPACE event_db;
+CREATE TABLE test_1.foo (a int PRIMARY KEY, timing time) TABLESPACE pg_default;  --<UNCOMMENT> TABLESPACE event_db;
 
 CREATE TABLE test_2.bar (b timestamptz(3), c "char", LIKE test_1.foo) WITH (autovacuum_enabled=off);
 
@@ -220,7 +220,7 @@ END; $$;
 
 -- Most usual types:
 CREATE TABLE weirdtypes (
-	a integer,
+	a integer default 1,
 	b int,
 	c _int4,
 	d int4[],
@@ -232,7 +232,7 @@ CREATE TABLE weirdtypes (
 	i _timestamptz(3),
 	j time(4) with time zone,
 	k timetz(3),
-	l interval,
+	l interval default '1 second'::interval,
 	m interval year to month,
 	n interval day to second,
 	o interval second,
@@ -252,11 +252,11 @@ CREATE TABLE weirdtypes (
 	ab float(32),
 	ac float(53),
 	ad float(53)[1],
-        ae tsvector,
+        ae tsvector CHECK (ae <> to_tsvector('The elephant is in the kitchen')),
         af int4,
         ag money,
         ah json[],
-        ai json,
+        ai json NOT NULL,
         aj jsonb,
         ak uuid,
         al point,
@@ -308,7 +308,7 @@ CREATE VIEW barf_check AS SELECT * FROM nyan WITH CHECK OPTION;
 
 
 CREATE MATERIALIZED VIEW foo_mv AS SELECT * FROM bar WITH NO DATA;
-CREATE MATERIALIZED VIEW bar_mv (c) TABLESPACE event_db AS SELECT c FROM bar WITH DATA;
+CREATE MATERIALIZED VIEW bar_mv (c) TABLESPACE pg_default AS SELECT c FROM bar WITH DATA;
 CREATE MATERIALIZED VIEW nyan_mv WITH (fillfactor=50) AS SELECT * FROM nyan;
 
 
@@ -381,7 +381,7 @@ INSERT INTO elements VALUES (9, 'elem1'::elem_types); -- Should FAIL by exceptio
 
 
 CREATE OR REPLACE RULE rule_foo AS ON DELETE TO foo WHERE OLD.a > 10 DO INSTEAD NOTHING;
-CREATE OR REPLACE RULE rule_foo2 AS ON INSERT TO bar DO ALSO INSERT INTO foo(a) (SELECT nextval('test_2_seq'));
+CREATE OR REPLACE RULE rule_foo2 AS ON INSERT TO bar DO ALSO INSERT INTO foo(a) (SELECT nextval('test_2_seq')::integer);
 CREATE RULE  rule_sel AS ON SELECT TO foo DO INSTEAD SELECT 'dummy rule rule_sel' as a;
 CREATE RULE  rule_upd AS ON UPDATE TO bar DO ALSO NOTHING;
 --CREATE OR REPLACE RULE rule_foo2 AS ON INSERT TO bar DO INSTEAD INSERT INTO foo(a) (SELECT nextval('test_2_seq'));
