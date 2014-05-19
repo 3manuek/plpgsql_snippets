@@ -170,7 +170,13 @@ CREATE TABLE test_1.foo (a int PRIMARY KEY, timing time) TABLESPACE pg_default; 
 
 CREATE TABLE test_2.bar (b timestamptz(3), c "char", LIKE test_1.foo) WITH (autovacuum_enabled=off);
 
-CREATE TABLE baz (d decimal(10, 4), e SERIAL, p point) INHERITS (test_2.bar);
+CREATE TABLE baz (
+       d decimal(10, 4), 
+       e SERIAL, 
+       p point, 
+       some_tsvector CHECK (some_tsvector <> to_tsvector('The elephant is in the kitchen')) ,
+       some_interval interval default '1 second'::interval,
+       ) INHERITS (test_2.bar);
 CREATE TABLE nyan AS SELECT * FROM test_1.foo;
 
 SET search_path TO 'test_1', 'test_2';
@@ -232,7 +238,7 @@ CREATE TABLE weirdtypes (
 	i _timestamptz(3),
 	j time(4) with time zone,
 	k timetz(3),
-	l interval default '1 second'::interval,
+	l interval ,
 	m interval year to month,
 	n interval day to second,
 	o interval second,
@@ -252,11 +258,11 @@ CREATE TABLE weirdtypes (
 	ab float(32),
 	ac float(53),
 	ad float(53)[1],
-        ae tsvector CHECK (ae <> to_tsvector('The elephant is in the kitchen')),
+        ae tsvector ,
         af int4,
         ag money,
         ah json[],
-        ai json NOT NULL,
+        ai json,
         aj jsonb,
         ak uuid,
         al point,
@@ -284,20 +290,13 @@ CREATE INDEX test8 ON weirdtypes (s COLLATE "C" ASC NULLS FIRST);
 --
 -- CREATE VIEW
 --
-COMMIT;
-SELECT '1';
+
 CREATE VIEW barf (a) AS SELECT * from foo;
-select 2;
 CREATE RECURSIVE VIEW barf_recursive (a) AS SELECT a from foo;
-select 3;
 CREATE VIEW rebarf_baz (d)  AS (SELECT d from baz) WITH CASCADED CHECK  OPTION;
-select 4;
 CREATE VIEW rebarf_sb (d) WITH (security_barrier=0) AS SELECT d from baz;
-select 5;
 CREATE VIEW rebarf (a) WITH (security_barrier) AS SELECT a from foo  ;
-select 6;
 CREATE VIEW rebarf_2 (a) AS SELECT a from foo WITH LOCAL CHECK OPTION;
-select 7;
 CREATE VIEW barf_check AS SELECT * FROM nyan WITH CHECK OPTION;
 
 
@@ -415,6 +414,27 @@ ALTER TABLE tt alter a set not null;
 create unique index tt_i on tt(a);
 alter table tt replica identity using index tt_i;
 
+--
+-- Special objects to test DROP statements
+--
+
+CREATE SCHEMA droptest
+CREATE TABLE stuff (a serial PRIMARY KEY, the_object oid)
+CREATE TABLE ref_stuff (b serial PRIMARY KEY, a_fk int NOT NULL REFERENCES stuff);
+
+set search_path = droptest;
+CREATE TYPE the_types AS ENUM('harder','better','faster','stronger');
+
+CREATE FUNCTION return_the_types () RETURNS the_types LANGUAGE plpgsql AS
+$$ DECLARE res the_types ; BEGIN SELECT (('{harder,better,faster,stronger}'::text[])[round(random()*3+1)])::the_types into res; RETURN res; END $$
+;
+
+INSERT INTO stuff(the_object) VALUES (lo_create(0));
+
+
+
+-- TODO: move everything to a split filecrea
+
 -- 
 -- DROPs 
 --
@@ -447,25 +467,6 @@ DROP TABLE nyan CASCADE;
 
 -- clean up
 DROP EVENT TRIGGER snitch;
-
-
---
--- Special objects to test DROP statements
---
-
-CREATE SCHEMA droptest
-CREATE TABLE stuff (a serial PRIMARY KEY, the_object oid)
-CREATE TABLE ref_stuff (b serial PRIMARY KEY, a_fk int NOT NULL REFERENCES stuff);
-
-set search_path = droptest;
-CREATE TYPE the_types AS ENUM('harder','better','faster','stronger');
-
-CREATE FUNCTION return_the_types () RETURNS the_types LANGUAGE plpgsql AS
-$$ DECLARE res the_types ; BEGIN SELECT (('{harder,better,faster,stronger}'::text[])[round(random()*3+1)])::the_types into res; RETURN res; END $$
-;
-
-INSERT INTO stuff(the_object) VALUES (lo_create(0));
-
 
 DROP TABLE ref_stuff CASCADE;
 DROP TYPE the_types CASCADE;
