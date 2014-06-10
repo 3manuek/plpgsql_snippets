@@ -13,6 +13,23 @@
 -- postgres=# INSERT INTO sip_capture VALUES (10, now() - '3 hours'::interval);
 -- INSERT 0 0
 
+-- postgres=# ALTER TABLE sip_capture ADD COLUMN b text;
+-- ALTER TABLE
+-- postgres=# INSERT INTO sip_capture VALUES (11, now());
+-- INSERT 0 0
+-- postgres=# INSERT INTO sip_capture VALUES (15, now());
+-- INSERT 0 0
+
+-- postgres=# select * from sip_capture_p2014_06_10_05;
+--  i  |            date            | b
+-- ----+----------------------------+---
+--  8 | 2014-06-10 17:17:27.68331  |
+--  9 | 2014-06-10 17:18:47.851731 |
+-- 10 | 2014-06-10 17:18:50.771322 |
+-- 11 | 2014-06-10 17:25:21.795731 |
+-- 15 | 2014-06-10 17:25:25.595749 |
+-- (5 rows)
+
 
 CREATE OR REPLACE FUNCTION PROTOTYPE_sip_capture_part_trig_func() RETURNS TRIGGER VOLATILE AS
 $BODY$
