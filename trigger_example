@@ -1,0 +1,34 @@
+-- postgres=# CREATE TABLE sip_capture (i int PRIMARY KEY, date timestamp);
+-- CREATE TABLE
+-- postgres=# CREATE TABLE sip_capture_p2014_06_10_1000 (CHECK (date < '2014-06-10'::timestamp), PRIMARY KEY (i)) INHERITS (sip_capture);
+-- CREATE TABLE
+
+-- postgres=# CREATE TRIGGER ins_cap BEFORE INSERT ON sip_capture FOR EACH ROW EXECUTE PROCEDURE PROTOTYPE_sip_capture_part_trig_func();
+-- CREATE TRIGGER
+
+-- postgres=# INSERT INTO sip_capture VALUES (9, now());
+-- INSERT 0 0
+-- postgres=# INSERT INTO sip_capture VALUES (10, now());
+-- INSERT 0 0
+-- postgres=# INSERT INTO sip_capture VALUES (10, now() - '3 hours'::interval);
+-- INSERT 0 0
+
+
+CREATE OR REPLACE FUNCTION PROTOTYPE_sip_capture_part_trig_func() RETURNS TRIGGER VOLATILE AS
+$BODY$
+BEGIN
+   BEGIN      
+      EXECUTE 'INSERT INTO sip_capture_p' || to_char(NEW.date, 'YYYY_MM_DD_HH') || 
+      ' SELECT ((' || quote_literal(NEW) || ')::sip_capture).*';   
+    EXCEPTION WHEN undefined_table THEN
+      EXECUTE 'CREATE TABLE sip_capture_p' || to_char(NEW.date, 'YYYY_MM_DD_HH') || 
+      '(CHECK ( date between ' || quote_literal(date_trunc('hour', NEW.date)) || ' and ' ||  
+      quote_literal(date_trunc('hour', NEW.date) + '1 hour'::interval) || 
+      '), PRIMARY KEY (i)) INHERITS (sip_capture);' ;
+      EXECUTE 'INSERT INTO sip_capture_p' || to_char(NEW.date, 'YYYY_MM_DD_HH') 
+      || ' SELECT ((' || quote_literal(NEW) || ')::sip_capture).*'; 
+   END;
+   RETURN NULL;
+END;
+$BODY$
+LANGUAGE plpgsql;
