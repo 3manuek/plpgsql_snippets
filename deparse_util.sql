@@ -346,7 +346,7 @@ CREATE TRIGGER generic_st AFTER TRUNCATE ON bar FOR STATEMENT EXECUTE PROCEDURE 
 -- Following example is for the Constraint Trigger implementation:
 --
 
-CREATE TYPE elem_types AS ENUM ('elem1','elem2');
+CREATE TYPE elem_types AS ENUM ('elem1','elem2','elem3');
 
 CREATE TABLE elements AS SELECT i, 'elem1'::elem_types as elem_type  from generate_series(1,10) i(i);
 
@@ -356,7 +356,7 @@ CREATE OR REPLACE FUNCTION duplicated_after_trigger() RETURNS TRIGGER AS $$
            FROM elements 
         WHERE i=NEW.i 
           AND elem_type='elem1'::elem_types) > 1 THEN
-      RAISE EXCEPTION 'Record duplicated';              
+      RAISE EXCEPTION 'Record duplicated by trigger, expected.';              
     END IF;
     RETURN NULL;
   END;
@@ -382,10 +382,10 @@ INSERT INTO elements VALUES (9, 'elem1'::elem_types); -- Should FAIL by exceptio
 
 CREATE OR REPLACE RULE rule_foo AS ON DELETE TO test_2.foo WHERE OLD.hidden > 10 DO INSTEAD NOTHING;
 CREATE OR REPLACE RULE rule_foo2 AS ON INSERT TO bar DO ALSO INSERT INTO test_2.foo(a) (SELECT NEW.c::text); -- (SELECT nextval('test_2_seq')::integer);
-CREATE RULE  rule_sel AS ON SELECT TO test_2.foo DO INSTEAD SELECT 1 as hidden, 'a' as a;
+CREATE RULE "_RETURN" AS ON SELECT TO test_2.foo DO INSTEAD SELECT 1::int as hidden, 'a'::text as a;
 CREATE RULE  rule_upd AS ON UPDATE TO bar DO ALSO NOTHING;
 CREATE OR REPLACE RULE rule_ins AS ON INSERT TO bar DO NOTHING;
-CREATE OR REPLACE RULE foo_rule_ins_several_actions AS ON INSERT TO test_2.foo DO (INSERT INTO test_2.foo VALUES(1) ; INSERT INTO test_2.foo VALUES(2));
+CREATE OR REPLACE RULE foo_rule_ins_several_actions AS ON INSERT TO test_2.foo DO (INSERT INTO test_2.foo(hidden) VALUES(100) ; INSERT INTO test_2.foo(hidden) VALUES(200));
 --CREATE OR REPLACE RULE rule_foo2 AS ON INSERT TO bar DO INSTEAD INSERT INTO foo(a) (SELECT nextval('test_2_seq'));
 -- XXX need to test rules with multiple actions
 
@@ -480,25 +480,26 @@ INSERT INTO stuff(the_object) VALUES (lo_create(0));
 -- DROP EVENT TRIGGER after_create_view;
 -- DROP EVENT TRIGGER drop_view;
 
-DROP VIEW barf;
-DROP VIEW barf_recursive;
-DROP VIEW rebarf;
-DROP VIEW rebarf_2;
-DROP VIEW barf_check;
-DROP MATERIALIZED VIEW foo_mv;
-DROP TABLE foo CASCADE;
-DROP TABLE baz CASCADE;
-DROP TABLE bar CASCADE;
-DROP TABLE nyan CASCADE;
+
+-- DROP VIEW barf;
+-- DROP VIEW barf_recursive;
+-- DROP VIEW rebarf;
+-- DROP VIEW rebarf_2;
+-- DROP VIEW barf_check;
+-- DROP MATERIALIZED VIEW foo_mv;
+-- DROP TABLE foo CASCADE;
+-- DROP TABLE baz CASCADE;
+-- DROP TABLE bar CASCADE;
+-- DROP TABLE nyan CASCADE;
 
 --<UNCOMMENT> DROP TABLESPACE event_db;
 
 
 
 -- clean up
-DROP EVENT TRIGGER snitch;
+-- DROP EVENT TRIGGER snitch;
 
-DROP TABLE ref_stuff CASCADE;
-DROP TYPE the_types CASCADE;
-DROP SCHEMA droptest CASCADE;
+-- DROP TABLE ref_stuff CASCADE;
+-- DROP TYPE the_types CASCADE;
+-- DROP SCHEMA droptest CASCADE;
 
