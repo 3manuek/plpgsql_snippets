@@ -5,7 +5,7 @@
 -- permission issues when creating the event_db folder.
 -- Please uncomment and remove the tag of the lines starting with "--<UNCOMMENT>" to proceed
 -- with the tablespace option enabled.
-
+--
 
 
 CREATE TABLE IF NOT EXISTS public.log (
@@ -174,13 +174,14 @@ CREATE TABLE baz (
        d decimal(10, 4), 
        e SERIAL, 
        p point, 
-       some_tsvector CHECK (some_tsvector <> to_tsvector('The elephant is in the kitchen')) ,
-       some_interval interval default '1 second'::interval,
+       some_tsvector tsvector CHECK (some_tsvector <> to_tsvector('The elephant is in the kitchen')) ,
+       some_interval interval default '1 second'::interval
        ) INHERITS (test_2.bar);
+
 CREATE TABLE nyan AS SELECT * FROM test_1.foo;
 
 SET search_path TO 'test_1', 'test_2';
-CREATE TABLE test_2.foo (hidden int);
+CREATE TABLE test_2.foo (hidden int, a text DEFAULT 'anything');
 CREATE TABLE bar2 (b timestamptz(3), LIKE foo INCLUDING ALL) INHERITS (foo, bar) WITH OIDS;
 
 CREATE TABLE including_base (a INT PRIMARY KEY, b text CHECK (b <> 'hello'), c int REFERENCES test_1.foo);
@@ -379,12 +380,12 @@ INSERT INTO elements VALUES (9, 'elem1'::elem_types); -- Should FAIL by exceptio
 --
 
 
-CREATE OR REPLACE RULE rule_foo AS ON DELETE TO foo WHERE OLD.a > 10 DO INSTEAD NOTHING;
-CREATE OR REPLACE RULE rule_foo2 AS ON INSERT TO bar DO ALSO INSERT INTO foo(a) (SELECT nextval('test_2_seq')::integer);
-CREATE RULE  rule_sel AS ON SELECT TO foo DO INSTEAD SELECT 'dummy rule rule_sel' as a;
+CREATE OR REPLACE RULE rule_foo AS ON DELETE TO test_2.foo WHERE OLD.hidden > 10 DO INSTEAD NOTHING;
+CREATE OR REPLACE RULE rule_foo2 AS ON INSERT TO bar DO ALSO INSERT INTO test_2.foo(a) (SELECT NEW.c::text); -- (SELECT nextval('test_2_seq')::integer);
+CREATE RULE  rule_sel AS ON SELECT TO test_2.foo DO INSTEAD SELECT 1 as hidden, 'a' as a;
 CREATE RULE  rule_upd AS ON UPDATE TO bar DO ALSO NOTHING;
 CREATE OR REPLACE RULE rule_ins AS ON INSERT TO bar DO NOTHING;
-CREATE OR REPLACE RULE test_2.foo_rule_ins_several_actions AS ON INSERT TO test_2.foo DO (INSERT INTO test_2.foo VALUES(1) ; INSERT INTO test_2.foo VALUES(2));
+CREATE OR REPLACE RULE foo_rule_ins_several_actions AS ON INSERT TO test_2.foo DO (INSERT INTO test_2.foo VALUES(1) ; INSERT INTO test_2.foo VALUES(2));
 --CREATE OR REPLACE RULE rule_foo2 AS ON INSERT TO bar DO INSTEAD INSERT INTO foo(a) (SELECT nextval('test_2_seq'));
 -- XXX need to test rules with multiple actions
 
