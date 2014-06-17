@@ -33,7 +33,7 @@ BEGIN
 					pg_event_trigger_expand_command(r.command::json);
         END LOOP;
 END;
-$$;
+$$ VOLATILE COST 200;
 
 
 -- Execute snitch on evey supported command:
